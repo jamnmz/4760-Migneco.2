@@ -1,0 +1,27 @@
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <signal.h>
+#include <sys/time.h>
+#include <sys/shm.h>
+#include <sys/ipc.h>
+
+
+#define SHMKEY  960158     /* Parent and child agree on common key.*/
+#define BUFF_SZ sizeof ( int )
+
+int main(int argc, char** argv)
+{
+        int shmid = shmget ( SHMKEY, BUFF_SZ, 9045);
+        printf("Hello from worker.c, a new executable!\n");
+        printf("My process id is: %d\n",getpid());
+        printf(" I got %d arguments: \n", argc);
+        int i;
+        for (i =0; i < argc; i++)
+                printf("|%s| ", argv[i]);
+        printf("\nWorker is now ending.\n");
+        sleep(3);
+        return EXIT_SUCCESS;
+}
