@@ -1,0 +1,64 @@
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <signal.h>
+#include <sys/time.h>
+#include <sys/shm.h>
+#include <sys/ipc.h>
+
+
+#define SHMKEY  960158     /* Parent and child agree on common key.*/
+#define BUFF_SZ sizeof ( int )
+
+int main(int argc, char** argv)
+{
+        int shmid = shmget ( SHMKEY, BUFF_SZ, 9045);
+
+        int i;
+        for (i =0; i < argc; i++)
+                printf("|%s| ", argv[i]);
+        //intializing variables and setting value of m to passed parameter m from parent
+        int m = atoi(argv[1]);
+        int x;
+        //int for what m is after 1000000
+        int mAdd = m*1000000;
+
+        //shared memory integers
+        int *nanoClock;
+        int *secClock;
+        nanoClock = (int*)(shmat(SHMKEY, BUFF_SZ, 9045));
+        secClock = (int*)(shmat(SHMKEY, BUFF_SZ, 9045));
+
+
+
+        for(x = 0; x < m; x++)
+        {
+
+                nanoClock += mAdd;
+                printf("Worker: %d",getpid());
+                printf("  incrementing: %d\n", mAdd);
+
+                if ((nanoClock >= 1000000000) && (nanoClock < 2000000000))
+                {
+                        nanoClock -= 1000000000;
+                        secClock++;
+                }
+                //in case nanoClock has somehow gone over 2000000000
+                else if (nanoClock >= 2000000000)
+                {
+                        //creates loop to increase second clock and decrese nanoClock
+                        while(nanoClock >= 1000000000)
+                        {
+                                nanoClock -= 1000000000;
+                                secClock++;
+                        }
+                }
+
+        }
+
+        printf("\nWorker is now ending.\n");
+        sleep(3);
+        return EXIT_SUCCESS;
+}
