@@ -1,0 +1,86 @@
+                switch ( opt )
+                {
+                        case 'h':
+                                print_usage ( argv[0] );
+                                return ( EXIT_SUCCESS );
+                        case 'n':
+                                n = atoi(optarg);
+                                if(n > 18)
+                                {
+                                        printf("option n cannot be greater than 18, setting to 18");
+                                        n = 18;
+                                }
+                        case 's':
+                                s = atoi(optarg);
+                                /*I have this here as I was confused on the insructions and it feels like this is
+                                 *the value that can only have up to 18 processes at one time, but intstructions
+                                 *explicitly say n, so I set both to max 18
+                                 */
+                                if(s > 18)
+                                {
+                                        printf("option n cannot be greater than 18, setting to 18");
+                                        s = 18;
+                                }
+
+                        case 'm':
+                                m = atoi(optarg);
+                                break;
+                        default: /* '?' */
+                                printf ( "Invalid option %c\n", optopt );
+                                print_usage ( argv[0] );
+                                return ( EXIT_FAILURE );
+                }
+        }
+
+        //creating shared memory
+        int shmid = shmget ( SHMKEY, BUFF_SZ, 9045 | IPC_CREAT );
+
+        char *secClock = (char*) shmat(shmid,NULL, 0);
+        char *nanoClock = (char*) shmat(shmid,NULL, 0);
+
+        int *sharedClockSec = (int*) (secClock);
+        int *sharedClockNano = (int*) (nanoClock);
+
+        int i;
+        //trying to handle warning "warning: assignment makes pointer from integer without a cast [enabled by default]"
+        char mConvert = m+'0';
+        //for loop for up to n processes
+        for(i = 0; i < n; i++)
+        {
+                pid_t childPid = fork(); // This is where the child process splits from the parent
+                if (childPid == 0)
+                {
+                        printf("I am a child but a copy of parent! My parent's PID is %d, and my PID is %d\n", getppid(), getpid());
+                        char* args[] = {"./worker", 0};
+                        args[1] = mConvert;
+                        execvp(args[0], args);
+                        execlp(args[0],args[0],args[1], args[2]);
+                        fprintf(stderr,"Exec failed, terminating\n");
+                        exit(1);
+                }
+                else
+                {
+                        printf("I'm a parent! My pid is %d, and my child's pid is %d \n", getpid(), childPid);
+                        sleep(1);
+                        wait(0);
+                }
+        }
+        printf("Parent is now ending.\n");
+
+        //freeing from shared memory
+        shmdt(sharedClockSec);
+        shmdt(sharedClockNano);
+        shmctl(shmid,IPC_RMID,NULL);
+        return EXIT_SUCCESS;
+        /*
+        if (setupinterrupt() == -1) {
+                perror("Failed to set up handler for SIGPROF");
+                return 1;
+        }
+        if (setupitimer() == -1) {
+                perror("Failed to set up the ITIMER_PROF interval timer");
+                return 1;
+        }
+        for ( ; ; );
+        */
+}
